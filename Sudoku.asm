@@ -1,15 +1,18 @@
-Tittle Sudoku em Assembly x86
-.model small
-.stack 100h
+TITLE VINÍCIUS BORGES DE GODOY (RA:22006132)
 
-    ;Macro para Pular linha
-pula_linha  MACRO 
-    mov ah,02
-    mov dl,10
-    int 21H
+.model small
+stack 100h
+
+    ;Ajuda na Formatação da Tabela do Sudoku
+Distanciamento2 MACRO
+    MOV DL, ' '
+    MOV AH, 02
+    INT 21H
+    INT 21H
+    INT 21H
 endm
 
-    ;Macro para Limpar a Tela do Terminal
+    ;Limpa a Tela para um melhor conforto
 limpa_tela MACRO
     MOV DL, 10
     MOV AH, 02
@@ -36,341 +39,269 @@ limpa_tela MACRO
     INT 21H
     INT 21H
     INT 21H
+
 endm
 
-    ;Macro para realizar a impressão da Linha do Sudoku
-LinhaIM MACRO
-    MOV DL, 20H
+    ;Pula duas linhas na tela
+PulaL2 MACRO
+    MOV DL, 10
     MOV AH, 02
+    INT 21H
+    INT 21H
+endm
+
+    ;Ajuda na Formatação da Tabela do Sudoku
+Distanciamento MACRO
+    MOV DL, ' '
+    MOV AH, 02
+    INT 21H
+endm
+
+    ;Quando Precionar o 'Esc' o programa se encerra de imediato
+EscFora MACRO
+
+    CMP AL, 27
+    JE Finaliza
+endm
+
+    ;Pula somente uma linha na tela
+PulaL MACRO
+    MOV DL, 10
+    MOV AH, 02
+    INT 21H
+endm
+
+    ;Enfeites e Matriz
+.data
+    Cima DB '                                __________           $'
+    Começo DB '=============================== < SUDOKU > ===================================== $'
+    BV DB ' -> Bem-vindo ao Sudoku em Assemlby, boa sorte e diversao! <- $'
+    Baixo DB '_______________________________________________________________________________ $'
+    EnterStart DB ' -> Aperte ENTER para INICIAR! $'
+    EnterSPACE DB ' -> Aperte ESC para SAIR DO JOGO: $'
+    EscOut DB ' -> FIM DE JOGO! Obrigado por jogar :D <- $'
+    Coluna DB '       A   B   C   D   E   F   G   H   I                                       $'
+    Linha DB ?
+    MudaLinha DB ' -> Qual linha gostaria de alterar: $'
+    MudaColuna DB ' -> Qual coluna gostaria de alterar: $'
+    EscolheNum DB ' -> Escolha um numero entre 1-9: $'
+    pBX DW ?
+    pSI DW ?
+
+    m1  DB 33h,34h,30h,37h,30h,36h,30h,30h,31h ;1  
+        DB 38h,37h,30h,30h,34h,35h,39h,32h,36h ;2  
+        DB 32h,30h,30h,38h,39h,31h,30h,30h,30h ;3  
+        DB 34h,30h,30h,39h,30h,33h,35h,36h,33h ;4  
+        DB 36h,30h,30h,30h,30h,30h,30h,39h,37h ;5  
+        DB 30h,31h,35h,36h,30h,37h,33h,30h,30h ;6
+        DB 30h,33h,32h,30h,37h,30h,32h,38h,30h ;7
+        DB 35h,30h,30h,31h,30h,30h,37h,30h,30h ;8
+        DB 37h,30h,30h,35h,30h,38h,30h,31h,39h ;9   
+
+.code
+
+    ;Main do Programa onde todos os procedimentos são colocados
+main proc
+
+    MOV AX, @DATA   ;Inicia o Programa
+    MOV DS, AX
+
+    CALL Titulo     ;Chama a Cabeçalho
+
+Continua:       ;Looping para colocar todos os numeros que seram preciosos para completar o quadrp
+
+    CALL Sudoku     ;Chama a proc do Sudoku
+
+    CALL Resposta   ;Chama a proc que permite o usuário responder a tabela do Sudoku
+
+    JMP Continua
+
+Final:
+
+    CALL Encerramento   ;Chama a proc para Finalizar o Programa
+
+main endp
+
+    ;Procedimento onde o Cabeçalho é feito
+Titulo proc
+
+    limpa_tela
+    PulaL
+
+    LEA DX, Cima            ;Estética
+    MOV AH, 09
     INT 21H
 
-    MOV DL, 20H
-    MOV AH, 02
+    PulaL
+
+    LEA DX, Começo          ;Estética
+    MOV AH, 09
     INT 21H
+
+    PulaL
+
+    LEA DX, BV              ;Estética
+    MOV AH, 09
+    INT 21H
+
+    PulaL
+
+    LEA DX, Baixo           ;Estética
+    MOV AH, 09
+    INT 21H
+
+    PulaL2
+
+    LEA DX, EnterStart      ;Confere se foi apertado o Enter para continuar
+    MOV AH, 09
+    INT 21H
+
+    MOV AH, 01              ;Recebe o digito esperando um 'Enter'
+    INT 21H
+
+    CMP AL, 13              ;Compara na Tabela ASCII para ver se é realmente o Enter
+    JE Foi
+
+Foi:         ;Caso seja o enter
+    RET     ; Retorna
+
+Titulo endp
+
+    ;Procedimento que cria o jogo Sudoku e printa ele na tela
+Sudoku proc
+    
+        ;Usa o sistema de incrementação para geras os números de Linhas
+    limpa_tela
+    PulaL
+    MOV BX, 0
+    MOV SI, 0
+    MOV Linha, 30H
+    LEA DX, Coluna
+    MOV AH, 09
+    INT 21H
+    PulaL
+    MOV CX, 9
+
+    ;Cria as Colunas ao Lado Númeradas de 1 a 9 para ajudar o jogador a saber o numero da linha
+SequênciaL:
+
+    PulaL
+    Distanciamento
 
     INC Linha
     MOV DL, Linha
     MOV AH, 02
     INT 21H
 
-    MOV DL, 29H
+    MOV DL, '>'     ;Printa uma 'seta' na frente dos numeros das linhas para diferenciar dos numeros do Quadro Sudoku
     MOV AH, 02
     INT 21H
 
-    MOV DL, 20H
-    MOV AH, 02
-    INT 21H 
-
-    MOV DL, 20H
-    MOV AH, 02
-    INT 21H
-endm
-
-.DATA
-
-  ;Estéticas e Matrizes:
-    Cima DB '                                ______________           $'
-    Começo DB '=============================== < SUDOKU > =============================== $'
-    BV DB ' -> Bem-vindo ao Sudoku em Assemlby, boa sorte e diversao! <- $'
-    Baixo DB '_______________________________________________________________________________ $'
-    EnterStart DB ' -> Aperte ENTER para INICIAR! $'
-    EnterSPACE DB ' -> Aperte ESPAÇO para CONTINUAR o Sudoku ou aperte outra tecla para finalizar o jogo: $'
-    EnterOut DB ' -> FIM DE JOGO! Obrigado por jogar :D <- $'
-    Coluna DW '','','','C1','','C2','','C3','','C4','','C5','','C6','','C7','','C8','','C9','$'
-    Linha DB ?
-    MudaLinha DB ' -> Qual linha gostaria de alterar: $'
-    MudaColuna DB ' -> Qual coluna gostaria de alterar: $'
-    EscolheNum DB ' -> Escolha um numero entre 1-9: $'
-    SENter DB ' -> OPA! ISSO NAO E UM ENTER >:) $ '
-    OP DW ?
-        DW '$'
-    pBX DW ?
-        DW '$'
-    pSI DW ?
-        DW '$'
-
-    m1  DW 35h,33h,30h,30h,37h,30h,30h,30h,30h ;1  
-        DW 36h,30h,30h,31h,39h,35h,30h,30h,30h ;2  
-        DW 30h,39h,38h,30h,30h,30h,30h,36h,30h ;3  
-        DW 38h,30h,30h,30h,36h,30h,30h,30h,33h ;4  
-        DW 34h,30h,30h,38h,30h,33h,30h,30h,31h ;5  
-        DW 37h,30h,30h,30h,32h,30h,30h,30h,36h ;6
-        DW 30h,36h,30h,30h,30h,30h,32h,38h,30h ;7
-        DW 30h,30h,30h,34h,31h,39h,30h,30h,35h ;8
-        DW 30h,30h,30h,30h,38h,30h,30h,37h,39h ;9  
-
-.CODE
-
-main proc
-
-        ;Começa o Programa
-    MOV AX,@DATA
-    MOV DS, AX
-
-        ;Limpa tela
-    limpa_tela
-    limpa_tela
-
-        ;Imprime uma mensagem
-    LEA DX, Cima 
-    MOV AH, 09
-    INT 21H
- 
-        ;Print Pula
-    pula_linha
-
-    LEA DX, Começo
-    MOV AH, 09
-    INT 21H
- 
-    pula_linha
-
-    LEA DX, BV
-    MOV AH, 09
-    INT 21H
- 
-    pula_linha
-
-    LEA DX, Baixo
-    MOV AH, 09
-    INT 21H
-
-EnterDNV:
-
-    LEA DX, EnterStart
-    MOV AH, 09
-    INT 21H
-
-    MOV AH, 01
-    INT 21H
-
-    CMP AL, 13D
-    JNE SemEnter
-Continua:
-
-    limpa_tela
-
-    LEA DX, Coluna
-    MOV AH, 09
-    INT 21H
+    Distanciamento2
+    Distanciamento
+    MOV DH, 9
     
-    pula_linha
+    ;Preenche os lugares que possuem numeros da Matriz apresentada acima
+SequênciaC:
+
+    CMP m1[BX][SI], 30H
+    JNE Preenchido
+    MOV DL, ' '
+    MOV AH, 02
+    INT 21H
+
+    JMP Nada
+
+Preenchido:
+
+    MOV DL, m1[BX][SI]      ;Imprime o numero que já existe no quadro Suduku
+    MOV AH, 02
+    INT 21H
+
+Nada:
+
+    Distanciamento2
+    INC SI
+    DEC DH
+
+    JNZ SequênciaC
+    LOOP SequênciaL     ;Repete até todas as linhas terem sido completadas pelos numeros da Matriz apresentada
+    RET
+Sudoku endp
+
+    ;Procedimento que finaliza o Programa e agradece por jogar quando a tecla Esc é apertada
+Encerramento proc
+
+    limpa_tela
+    PulaL
     
-    CALL Matriz
-    CALL Resultado
-    CALL Matriz
-
-    LEA DX, EnterSPACE
-    MOV AH, 09
-    INT 21H
-
-    MOV AH, 01
-    INT 21H
-
-    CMP AL, 8
-    JE Continua
-
-    pula_linha
-
-    LEA DX, EnterOut
+    LEA DX, EscOut
     MOV AH, 09
     INT 21H
 
     MOV AH, 4CH
     INT 21H
 
-SemEnter:
-    limpa_tela
-    LEA DX, SemEnter
-    MOV AH, 09
-    INT 21H
-    limpa_tela
-    JMP EnterDNV
-    
-main endp
+Encerramento endp
 
-Resultado proc
-    pula_linha
-    XOR SI, SI
+    ;Procedimento que permite o jogogador selecionar linha e coluna para colocar o resultado no Sudoku
+Resposta proc
 
-    MOV DL, 175D
-    MOV AH, 02
-    INT 21H
+    PulaL2
+    PulaL
 
     LEA DX, MudaLinha
     MOV AH, 09
     INT 21H
 
-    MOV AH, 01
+    MOV AH, 01      ;Coloca qual linha deseja alterar
     INT 21H
 
-    SUB AL, 40H
-    SHL AL, 1
-    SUB AL, 2
-    MOV BL, AL
+    EscFora         ;Verifica se o Jogador deseja encerrar o jogo
 
-    pula_linha
-
-    MOV DL, 175D
-    MOV AH, 02
-    INT 21H
+    SUB AL, 31H
+    XOR AH, AH
+    MOV CH, 9  
+    MUL CH
+    MOV pBX, AX
+    PulaL
 
     LEA DX, MudaColuna
     MOV AH, 09
     INT 21H
 
-    MOV AH, 01
+    MOV AH, 01      ;Coloca qual coluna deseja alterar
     INT 21H
 
-    XOR CX, CX
-    MOV CL, AL
+    EscFora
 
-    MOV AX, 12h
-    SUB CL, 31H
-    MUL CL
-
-    MOV SI, AX
-
-    pula_linha
-
-    MOV DL, 175D
-    MOV AH, 02
-    INT 21H
+    SUB AL, 41H
+    XOR AH, AH
+    MOV pSI, AX
+    PulaL
 
     LEA DX, EscolheNum
     MOV AH, 09
     INT 21H
 
-    XOR AX, AX
-
-    MOV AH, 01
+    MOV AH, 01      ;Coloca o Numero que deseja colocar na posição que selecionou
     INT 21H
 
-    MOV pBX, BX
-    MOV pSI, SI
+    EscFora
 
-    MOV m1[BX][SI], AX
+    MOV BX, pBX         ;Pega as posições da Coluna e Linha para colocar o Numero digitado
+    MOV SI, pSI
 
-    limpa_tela
-    pula_linha
+    MOV m1[BX][SI], AL          ;Faz a nova matriz do Suduku com o numero novo inserido pelo jogador
+    JMP MandaDVolta
 
-    LEA DX, Coluna
-    MOV AH, 09
-    INT 21H
+Finaliza:
 
-    pula_linha
-    RET
-Resultado endp
+    JMP Final       ;Salto para Finalizar o Jogo
 
-Matriz proc
-    MOV BX, 0
-    MOV SI, 0
-    MOV Linha, 30H
+MandaDVolta:
 
-    JMP BX_ZERO
+    RET         ;Retorna
 
-IMP:
-    XOR CX, DX
-    ADD BX, 02
-
-BX_ZERO:
-    CMP BX, 0
-    JE LinhaIMP01
-    JMP Pula
-
-LinhaIMP01:
-    LinhaIM
-
-Pula:
-
-PulaV2:
-    CMP SI, 0
-    JG DX_M
-
-    JMP PulaV3
-
-BX_UM:
-    JMP BX_ZERO
-
-DX_M:
-    MOV DL, 7CH
-    MOV AH, 02
-    INT 21H
-
-    MOV DX, m1[BX][SI]
-    CMP DL, 0
-    JNE PulaV4
-
-    XCHG DH, DL
-
-    JMP PulaV4
-
-PulaV3:
-    MOV DL, 7CH
-    MOV AH, 02
-    INT 21H
-    
-    MOV DX, m1[BX][SI]
-
-ForaDeAlcance:
-    CMP BX, 16
-    JNE IMP
-
-PulaV4:
-    CMP DL, 30H
-    JE PulaV5
-
-    JMP PulaV6
-
-PulaV5:
-    CMP BX, pBX
-    JE test_SI
-
-    JMP PulaV7
-
-test_SI:
-    CMP SI, pSI
-    JE NV
-
-    JMP PulaV7
-
-NV:
-    CMP OP, 0
-    JG NV1
-
-PulaV7:
-    MOV DL, 20H
-    JMP PulaV6
-
-NV1:
-    MOV DX, OP
-    MOV OP, 0
-
-PulaV6:
-    MOV AH, 02
-    INT 21H
-
-    MOV DL, 7CH
-    MOV AH, 02
-    INT 21H
-
-    XOR DX, DX
-
-    MOV DX, 20h
-    MOV AH, 02
-    INT 21H
-
-    JMP ForaDeAlcance
-
-    MOV DL, 10
-    MOV AH, 02
-    INT 21H
-
-    XOR BX, BX
-
-    ADD SI, 12h
-    CMP SI, 162
-    JNE BX_UM
-    RET
-Matriz endp
+Resposta endp
 END main
